@@ -14,7 +14,6 @@
 #include <hal/hal_button.hpp>
 
 #include <middlewares/active_object.hpp>
-#include <middlewares/observer.hpp>
 
 namespace controller_events
 {

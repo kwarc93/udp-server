@@ -88,16 +88,16 @@ FreeRTOSConfig.h, not FreeRTOSIPConfig.h. Consideration needs to be given as to
 the priority assigned to the task executing the IP stack relative to the
 priority assigned to tasks that use the IP stack. */
 
-#define  ipconfigIP_TASK_PRIORITY   4
-#define  niEMAC_HANDLER_TASK_PRIORITY  5
-#define  ipconfigIPERF_PRIORITY_IPERF_TASK 6
+#define  niEMAC_HANDLER_TASK_PRIORITY  (configMAX_PRIORITIES - 1)
+#define  ipconfigIP_TASK_PRIORITY   (configMAX_PRIORITIES - 2)
+#define  ipconfigIPERF_PRIORITY_IPERF_TASK (configMAX_PRIORITIES - 3)
 
 /* The size, in words (not bytes), of the stack allocated to the FreeRTOS+TCP
 task.  This setting is less important when the FreeRTOS Win32 simulator is used
 as the Win32 simulator only stores a fixed amount of information on the task
 stack.  FreeRTOS includes optional stack overflow detection, see:
 http://www.freertos.org/Stacks-and-stack-overflow-checking.html */
-#define ipconfigIP_TASK_STACK_SIZE_WORDS ( configMINIMAL_STACK_SIZE * 5U )
+#define ipconfigIP_TASK_STACK_SIZE_WORDS ( configMINIMAL_STACK_SIZE * 2U )
 
 
 /* If ipconfigUSE_NETWORK_EVENT_HOOK is set to 1 then FreeRTOS+TCP will call the
@@ -223,12 +223,6 @@ ipconfigCAN_FRAGMENT_OUTGOING_PACKETS is 1 then (ipconfigNETWORK_MTU - 28) must
 be divisible by 8. */
 
 #define ipconfigNETWORK_MTU     ( 1500 )
-/* #define ipconfigNETWORK_MTU      ( 1024 + 40 ) */
-
-/*#define ipconfigNETWORK_MTU     (1024+40)*/
-/*
-#define ipconfigTCP_MSS      1024
-*/
 
 /* Set ipconfigUSE_DNS to 1 to include a basic DNS client/resolver.  DNS is used
 through the FreeRTOS_gethostbyname() API function. */
@@ -359,6 +353,7 @@ messages. */
 
 
 #define ipconfigUSE_CALLBACKS   1
+#define ipconfigSOCKET_HAS_USER_WAKE_CALLBACK 1
 
 #define ipconfigCHECK_IP_QUEUE_SPACE 1
 
