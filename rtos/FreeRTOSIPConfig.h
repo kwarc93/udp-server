@@ -1,11 +1,6 @@
 /*
- * Some constants, hardware definitions and comments taken from ST's HAL driver
- * library, COPYRIGHT(c) 2015 STMicroelectronics.
- */
-
-/*
- * FreeRTOS+TCP V2.3.4
- * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ * FreeRTOS+TCP V3.1.0
+ * Copyright (C) 2022 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -53,8 +48,8 @@ used as defaults. */
 #define ipconfigZERO_COPY_RX_DRIVER   ( 1 )
 #define ipconfigZERO_COPY_TX_DRIVER   ( 1 )
 
-//#define ipconfigUSE_LINKED_RX_MESSAGES                ( 1 )
-//#define ipconfigSUPPORT_NETWORK_DOWN_EVENT            ( 1 )
+#define ipconfigUSE_LINKED_RX_MESSAGES                ( 1 )
+#define ipconfigSUPPORT_NETWORK_DOWN_EVENT            ( 1 )
 
 /* Include support for LLMNR: Link-local Multicast Name Resolution */
 #define ipconfigUSE_LLMNR     ( 0 )
@@ -130,7 +125,6 @@ reason.  The static configuration used is that passed into the stack by the
 FreeRTOS_IPInit() function call. */
 #define ipconfigUSE_DHCP    1
 #define ipconfigDHCP_REGISTER_HOSTNAME 1
-#define ipconfigDHCP_USES_UNICAST       1
 
 /* When ipconfigUSE_DHCP is set to 1, DHCP requests will be sent out at
 increasing time intervals until either a reply is received from a DHCP server
@@ -352,20 +346,12 @@ messages. */
 #define ipconfigMAC_INTERRUPT_PRIORITY ( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY )
 
 
-#define ipconfigUSE_CALLBACKS   1
-#define ipconfigSOCKET_HAS_USER_WAKE_CALLBACK 1
+#define ipconfigUSE_CALLBACKS   ( 0 )
+#define ipconfigSOCKET_HAS_USER_WAKE_CALLBACK ( 0 )
+
+#define ipconfigSOCKET_HAS_USER_SEMAPHORE ( 0 )
 
 #define ipconfigCHECK_IP_QUEUE_SPACE 1
-
-#define ipconfigIPERF_DOES_ECHO_UDP          0
-
-#define ipconfigIPERF_VERSION     3
-#define ipconfigIPERF_STACK_SIZE_IPERF_TASK  680
-
-#define ipconfigIPERF_TX_BUFSIZE    ( 8 * ipconfigTCP_MSS )
-#define ipconfigIPERF_TX_WINSIZE    ( 6 )
-#define ipconfigIPERF_RX_BUFSIZE    ( 8 * ipconfigTCP_MSS )
-#define ipconfigIPERF_RX_WINSIZE    ( 6 )
 
 /* The iperf module declares a character buffer to store its send data. */
 #define ipconfigIPERF_RECV_BUFFER_SIZE   ( 2 * ipconfigTCP_MSS )
@@ -379,49 +365,6 @@ messages. */
 //#define ipconfigARP_STORES_REMOTE_ADDRESSES  ( 1 )
 
 #define ipconfigETHERNET_DRIVER_FILTERS_PACKETS ( 1 )
-
-/* If set to 1 then each message sent via the UDP logging facility will end
-with \r\n.  If set to 0 then each message sent via the UDP logging facility will
-end with \n. */
-#define configUDP_LOGGING_NEEDS_CR_LF  ( 0 )
-
-/* Sets the maximum length for a string sent via the UDP logging facility. */
-#define configUDP_LOGGING_STRING_LENGTH ( 200 )
-
-/* The UDP logging facility buffers messages until the UDP logging task is able
-to transmit them.  configUDP_LOGGING_MAX_MESSAGES_IN_BUFFER sets the maximum
-number of messages that can be buffered at any one time. */
-#define configUDP_LOGGING_MAX_MESSAGES_IN_BUFFER ( 20 )
-
-/* The UDP logging facility creates a task to send buffered messages to the UDP
-port.  configUDP_LOGGING_TASK_STACK_SIZE sets the task's stack size. */
-#define configUDP_LOGGING_TASK_STACK_SIZE   ( 512 )
-
-/* The UDP logging facility creates a task to send buffered messages to the UDP
-port.  configUDP_LOGGING_TASK_PRIORITY sets the task's priority.  It is
-suggested to give the task a low priority to ensure it does not adversely effect
-the performance of other TCP/IP stack activity. */
-#define configUDP_LOGGING_TASK_PRIORITY    ( tskIDLE_PRIORITY  + 2 )
-
-/* The UDP port to which the UDP logging facility sends messages. */
-#define configUDP_LOGGING_PORT_REMOTE  2403
-
-/* The local UDP port to which commands can be sent. */
-#define configUDP_LOGGING_PORT_LOCAL  2402
-
-/* You may define a specific remote address for UDP logging.
- * By default, the logging will be sent to the local broadcast address,
- * e.g. 192.168.1.25. */
-/*
- *  #define configUDP_LOGGING_ADDR0  192
- *  #define configUDP_LOGGING_ADDR1  168
- *  #define configUDP_LOGGING_ADDR2  1
- *  #define configUDP_LOGGING_ADDR3  101
- */
-
-#define ipconfigSOCKET_HAS_USER_SEMAPHORE  1
-
-#define ipconfigTCP_MEM_STATS_MAX_ALLOCATION 64
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -1,7 +1,7 @@
 /*
  * controller.cpp
  *
- *  Created on: 5 sty 2023
+ *  Created on: 10 mar 2024
  *      Author: kwarc
  */
 
@@ -69,7 +69,7 @@ void controller::event_handler(const events::led_toggle &e)
 
 void controller::event_handler(const events::button_state_changed &e)
 {
-    printf("Button %s\r\n", e.state ? "pressed" : "released");
+    printf("Button %s\n", e.state ? "pressed" : "released");
 }
 
 
