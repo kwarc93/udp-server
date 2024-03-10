@@ -87,7 +87,7 @@ configMAX_PRIORITIES is a standard FreeRTOS configuration parameter defined in
 FreeRTOSConfig.h, not FreeRTOSIPConfig.h. Consideration needs to be given as to
 the priority assigned to the task executing the IP stack relative to the
 priority assigned to tasks that use the IP stack. */
-//#define ipconfigIP_TASK_PRIORITY   ( configMAX_PRIORITIES - 2 )
+
 #define  ipconfigIP_TASK_PRIORITY   4
 #define  niEMAC_HANDLER_TASK_PRIORITY  5
 #define  ipconfigIPERF_PRIORITY_IPERF_TASK 6
@@ -99,20 +99,13 @@ stack.  FreeRTOS includes optional stack overflow detection, see:
 http://www.freertos.org/Stacks-and-stack-overflow-checking.html */
 #define ipconfigIP_TASK_STACK_SIZE_WORDS ( configMINIMAL_STACK_SIZE * 5U )
 
-/* ipconfigRAND32() is called by the IP stack to generate random numbers for
-things such as a DHCP transaction number or initial sequence number.  Random
-number generation is performed via this macro to allow applications to use their
-own random number generation method.  For example, it might be possible to
-generate a random number by sampling noise on an analogue input. */
-//extern UBaseType_t uxRand( void );
-//#define ipconfigRAND32() uxRand()
 
 /* If ipconfigUSE_NETWORK_EVENT_HOOK is set to 1 then FreeRTOS+TCP will call the
 network event hook at the appropriate times.  If ipconfigUSE_NETWORK_EVENT_HOOK
 is not set to 1 then the network event hook will never be called.  See
 http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_UDP/API/vApplicationIPNetworkEventHook.shtml
 */
-#define ipconfigUSE_NETWORK_EVENT_HOOK 0
+#define ipconfigUSE_NETWORK_EVENT_HOOK 1
 
 /* Sockets have a send block time attribute.  If FreeRTOS_sendto() is called but
 a network buffer cannot be obtained then the calling task is held in the Blocked

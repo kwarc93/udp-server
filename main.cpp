@@ -33,10 +33,82 @@ static const uint8_t ucGatewayAddress[ 4 ] = { 192, 168, 1, 1 };
 /* The following is the address of an OpenDNS server. */
 static const uint8_t ucDNSServerAddress[ 4 ] = { 208, 67, 222, 222 };
 
+static void udp_server( void *pvParameters )
+{
+long lBytes;
+uint8_t cReceivedString[ 128 ];
+struct freertos_sockaddr xClient, xBindAddress;
+uint32_t xClientLength = sizeof( xClient );
+Socket_t xListeningSocket;
+
+   /* Attempt to open the socket. */
+   xListeningSocket = FreeRTOS_socket( FREERTOS_AF_INET,
+                                       FREERTOS_SOCK_DGRAM, /*FREERTOS_SOCK_DGRAM for UDP.*/
+                                       FREERTOS_IPPROTO_UDP );
+
+   /* Check the socket was created. */
+   configASSERT( xListeningSocket != FREERTOS_INVALID_SOCKET );
+
+   /* Bind to port 7. */
+   xBindAddress.sin_port = FreeRTOS_htons( 7 );
+   FreeRTOS_bind( xListeningSocket, &xBindAddress, sizeof( xBindAddress ) );
+
+   for( ;; )
+   {
+       /* Receive data from the socket.  ulFlags is zero, so the standard
+          interface is used.  By default the block time is portMAX_DELAY, but it
+          can be changed using FreeRTOS_setsockopt(). */
+       lBytes = FreeRTOS_recvfrom( xListeningSocket,
+                                   cReceivedString,
+                                   sizeof( cReceivedString ),
+                                   0,
+                                   &xClient,
+                                   &xClientLength );
+
+       if( lBytes > 0 )
+       {
+           /* Data was received and can be process here. */
+           FreeRTOS_sendto( xListeningSocket,
+                            cReceivedString,
+                            lBytes,
+                            0,
+                            &xClient,
+                            xClientLength );
+       }
+   }
+}
+
+void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent )
+{
+static BaseType_t xTasksAlreadyCreated = pdFALSE;
+
+    /* Both eNetworkUp and eNetworkDown events can be processed here. */
+    if( eNetworkEvent == eNetworkUp )
+    {
+        /* Create the tasks that use the TCP/IP stack if they have not already
+        been created. */
+        if( xTasksAlreadyCreated == pdFALSE )
+        {
+            /*
+             * For convenience, tasks that use FreeRTOS-Plus-TCP can be created here
+             * to ensure they are not created before the network is usable.
+             */
+            printf("Starting UDP server\n");
+
+            osThreadAttr_t attr = { 0 };
+            attr.name = "udp_server";
+            attr.priority = osPriorityNormal;
+            attr.stack_size = 2048;
+            osThreadNew(udp_server, NULL, &attr);
+
+            xTasksAlreadyCreated = pdTRUE;
+        }
+    }
+}
 
 void init_thread(void *arg)
 {
-    /* Initialise the RTOS's TCP/IP stack.  The tasks that use the network
+    /* Initialise the RTOS's IP stack.  The tasks that use the network
     are created in the vApplicationIPNetworkEventHook() hook function
     below.  The hook function is called when the network connects. */
     FreeRTOS_IPInit(ucIPAddress, ucNetMask, ucGatewayAddress, ucDNSServerAddress, ucMACAddress);
@@ -52,7 +124,7 @@ int main(void)
 {
     hal::system::init();
 
-    printf("System started\r\n");
+    printf("System started\n");
 
     osKernelInitialize();
     osThreadNew(init_thread, NULL, NULL);
@@ -68,49 +140,33 @@ int main(void)
 
 const char * pcApplicationHostnameHook( void )
 {
-    return "udp-server";
+    return "stm32f746";
 }
 
-eDHCPCallbackAnswer_t xApplicationDHCPHook( eDHCPCallbackPhase_t eDHCPPhase,
-                                            uint32_t ulIPAddress )
+eDHCPCallbackAnswer_t xApplicationDHCPHook (eDHCPCallbackPhase_t eDHCPPhase, uint32_t ulIPAddress)
 {
-eDHCPCallbackAnswer_t eReturn;
-  /* This hook is called in a couple of places during the DHCP process, as
-  identified by the eDHCPPhase parameter. */
-  switch( eDHCPPhase )
-  {
-    case eDHCPPhasePreDiscover  :
-      /* A DHCP discovery is about to be sent out.  eDHCPContinue is
-      returned to allow the discovery to go out.
+    eDHCPCallbackAnswer_t eReturn;
+    switch (eDHCPPhase)
+    {
+        case eDHCPPhasePreDiscover:
+            eReturn = eDHCPContinue;
+            break;
 
-      If eDHCPUseDefaults had been returned instead then the DHCP process
-      would be stopped and the statically configured IP address would be
-      used.
+        case eDHCPPhasePreRequest:
+            char addr[16];
+            FreeRTOS_inet_ntoa (ulIPAddress, addr);
+            printf ("IP address from DHCP: %s\n", addr);
+            eReturn = eDHCPContinue;
+            break;
 
-      If eDHCPStopNoChanges had been returned instead then the DHCP
-      process would be stopped and whatever the current network
-      configuration was would continue to be used. */
-      eReturn = eDHCPContinue;
-      break;
+        default:
+            eReturn = eDHCPContinue;
+            break;
+    }
 
-    case eDHCPPhasePreRequest  :
-      /* An offer has been received from the DHCP server, and the offered
-      IP address is passed in the ulIPAddress parameter. */
-      char addr[16];
-      FreeRTOS_inet_ntoa(ulIPAddress, addr);
-      printf("[DHCP] IP: %s\r\n", addr);
-      eReturn = eDHCPContinue;
-      break;
-
-    default :
-      /* Cannot be reached, but set eReturn to prevent compiler warnings
-      where compilers are disposed to generating one. */
-      eReturn = eDHCPContinue;
-      break;
-  }
-
-  return eReturn;
+    return eReturn;
 }
+
 BaseType_t xApplicationGetRandomNumber( uint32_t * pulNumber )
 {
     static uint32_t rand = 2345;
@@ -131,19 +187,6 @@ extern "C" void HAL_ETH_MspInit(void)
     rcc::enable_periph_clock(RCC_PERIPH_BUS(AHB1, ETHMAC), true);
     rcc::enable_periph_clock(RCC_PERIPH_BUS(AHB1, ETHMACTX), true);
     rcc::enable_periph_clock(RCC_PERIPH_BUS(AHB1, ETHMACRX), true);
-
-    /*
-    ETH GPIO Configuration
-    PG14     ------> ETH_TXD1
-    PG13     ------> ETH_TXD0
-    PG11     ------> ETH_TX_EN
-    PC1     ------> ETH_MDC
-    PA1     ------> ETH_REF_CLK
-    PC4     ------> ETH_RXD0
-    PA2     ------> ETH_MDIO
-    PC5     ------> ETH_RXD1
-    PA7     ------> ETH_CRS_DV
-    */
 
     gpio::configure({gpio::port::portg, gpio::pin::pin14}, gpio::mode::af, gpio::af::af11);
     gpio::configure({gpio::port::portg, gpio::pin::pin13}, gpio::mode::af, gpio::af::af11);
