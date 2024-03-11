@@ -18,9 +18,10 @@
 namespace controller_events
 {
 
-struct led_toggle
+struct command_request
 {
-
+    char data[64];
+    size_t data_size;
 };
 
 struct button_state_changed
@@ -30,8 +31,8 @@ struct button_state_changed
 
 using incoming = std::variant
 <
-    button_state_changed,
-    led_toggle
+    command_request,
+    button_state_changed
 >;
 
 }
@@ -46,16 +47,12 @@ private:
     void dispatch(const event &e) override;
 
     /* Event handlers */
-    void event_handler(const controller_events::led_toggle &e);
+    void event_handler(const controller_events::command_request &e);
     void event_handler(const controller_events::button_state_changed &e);
 
-    int error_code;
-
+    hal::leds::debug led;
     hal::buttons::blue_btn button;
     osTimerId_t button_timer;
-
-    hal::leds::debug led;
-    osTimerId_t led_timer;
 };
 
 

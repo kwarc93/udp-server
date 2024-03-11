@@ -6,9 +6,10 @@
  */
 
 #include "controller.hpp"
+#include "app/server/server.hpp"
 
-#include <array>
-#include <algorithm>
+#include <string>
+#include <cstdio>
 
 namespace events = controller_events;
 
@@ -23,11 +24,11 @@ void button_timer_cb(void *arg)
     if (arg == nullptr)
         return;
 
-    hal::button *button = static_cast<hal::button*>(arg);
+    auto *button = static_cast<hal::button*>(arg);
 
     button->debounce();
 
-    static controller::event e { events::button_state_changed {}, controller::event::flags::immutable };
+    controller::event e { events::button_state_changed {} };
 
     if (button->was_pressed())
     {
@@ -41,17 +42,6 @@ void button_timer_cb(void *arg)
     }
 }
 
-void led_timer_cb(void *arg)
-{
-    if (arg == nullptr)
-        return;
-
-    auto *ctrl = static_cast<controller*>(arg);
-
-    static const controller::event e { events::led_toggle {}, controller::event::flags::immutable };
-    ctrl->send(e);
-}
-
 }
 
 //-----------------------------------------------------------------------------
@@ -62,9 +52,48 @@ void controller::dispatch(const event& e)
     std::visit([this](auto &&e) { this->event_handler(e); }, e.data);
 }
 
-void controller::event_handler(const events::led_toggle &e)
+void controller::event_handler(const events::command_request &e)
 {
-    this->led.set(!this->led.get());
+    const std::string cmd_req = e.data;
+
+    size_t delim_pos = cmd_req.find(" ");
+    if (delim_pos == cmd_req.npos)
+        return;
+
+    const std::string cmd = cmd_req.substr(0, delim_pos);
+    size_t end_pos = cmd_req.find("\n");
+    if (end_pos == cmd_req.npos)
+        return;
+
+    const std::string arg = cmd_req.substr(delim_pos + 1, end_pos - delim_pos - 1);
+
+    server_events::command_response cmd_rsp {};
+
+    if (cmd == "led")
+    {
+        if (arg == "on")
+            this->led.set(true);
+        else if (arg == "off")
+            this->led.set(false);
+        else if (arg == "get")
+            cmd_rsp.data_size = std::snprintf(cmd_rsp.data, sizeof(cmd_rsp.data), ">led is %s\n",(this->led.get() ? "on" : "off"));
+    }
+    else if (cmd == "button")
+    {
+        if (arg == "get")
+            cmd_rsp.data_size = std::snprintf(cmd_rsp.data, sizeof(cmd_rsp.data), ">button is %s\n",(this->button.is_pressed() ? "pressed" : "released"));
+    }
+    else if (cmd == "print")
+    {
+        puts(arg.c_str());
+    }
+    else
+    {
+        cmd_rsp.data_size = std::snprintf(cmd_rsp.data, sizeof(cmd_rsp.data), ">unsupported command\n");
+    }
+
+    if (cmd_rsp.data_size > 0)
+        server::instance->send(server::event { cmd_rsp });
 }
 
 void controller::event_handler(const events::button_state_changed &e)
@@ -72,21 +101,15 @@ void controller::event_handler(const events::button_state_changed &e)
     printf("Button %s\n", e.state ? "pressed" : "released");
 }
 
-
 //-----------------------------------------------------------------------------
 /* public */
 
-controller::controller() : active_object("controller", osPriorityNormal, 2048), error_code{0}
+controller::controller() : active_object("controller", osPriorityNormal, 2048)
 {
     /* Create timer for button debouncing */
     this->button_timer = osTimerNew(button_timer_cb, osTimerPeriodic, &this->button, NULL);
     assert(this->button_timer != nullptr);
     osTimerStart(this->button_timer, 20);
-
-    /* Create timer for LED blink */
-    this->led_timer = osTimerNew(led_timer_cb, osTimerPeriodic, this, NULL);
-    assert(this->led_timer != nullptr);
-    osTimerStart(this->led_timer, 500);
 }
 
 controller::~controller()

@@ -11,6 +11,7 @@
 #include <variant>
 
 #include <middlewares/active_object.hpp>
+
 #include "FreeRTOS_IP.h"
 
 namespace server_events
@@ -26,10 +27,17 @@ struct network_down
 
 };
 
+struct command_response
+{
+    char data[64];
+    size_t data_size;
+};
+
 using incoming = std::variant
 <
     network_up,
-    network_down
+    network_down,
+    command_response
 >;
 
 }
@@ -46,6 +54,7 @@ private:
     /* Event handlers */
     void event_handler(const server_events::network_up &e);
     void event_handler(const server_events::network_down &e);
+    void event_handler(const server_events::command_response &e);
 
     static void receive_thread_loop(void *arg);
 

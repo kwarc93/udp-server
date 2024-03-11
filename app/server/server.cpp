@@ -8,6 +8,7 @@
 #include "server.hpp"
 
 #include "app/config.hpp"
+#include "app/controller/controller.hpp"
 
 #include <cstdio>
 #include <cassert>
@@ -17,22 +18,17 @@ namespace events = server_events;
 //-----------------------------------------------------------------------------
 /* helpers */
 
-namespace
-{
-
-}
-
 void vApplicationIPNetworkEventHook(eIPCallbackEvent_t eNetworkEvent)
 {
     if (eNetworkEvent == eNetworkUp)
     {
         static const server::event e { events::network_up {}, server::event::flags::immutable };
-        server::active_object::instance->send(e);
+        server::instance->send(e);
     }
     else if (eNetworkEvent == eNetworkDown)
     {
         static const server::event e { events::network_down {}, server::event::flags::immutable };
-        server::active_object::instance->send(e);
+        server::instance->send(e);
     }
 }
 
@@ -109,7 +105,7 @@ void server::event_handler(const events::network_up &e)
     receive_thread_attr.priority = osPriorityNormal;
     receive_thread_attr.stack_size = 2048;
 
-    this->receive_thread = osThreadNew(server::receive_thread_loop, this, &receive_thread_attr);
+    this->receive_thread = osThreadNew(this->receive_thread_loop, this, &receive_thread_attr);
     assert(this->receive_thread != nullptr);
 
     printf("UDP server %s\n", err ? "start error" : "started");
@@ -124,33 +120,46 @@ void server::event_handler(const events::network_down &e)
     this->receive_thread = nullptr;
 }
 
+void server::event_handler(const events::command_response &e)
+{
+    const int32_t result = FreeRTOS_sendto(this->listening_socket,
+                                           e.data,
+                                           e.data_size,
+                                           0,
+                                           &this->client_addr,
+                                           sizeof(this->client_addr));
+
+    if (result != static_cast<int32_t>(e.data_size) || result < 0)
+        printf("Server error: 'sendto' failed\n");
+}
+
 void server::receive_thread_loop(void *arg)
 {
-    server *this_ptr = static_cast<server*>(arg);
+    auto *this_ptr = static_cast<server*>(arg);
 
-    uint8_t received_data[128];
     uint32_t client_len = sizeof(this_ptr->client_addr);
+
+    controller_events::command_request cmd_req;
 
     while (true)
     {
-        int32_t bytes_received = FreeRTOS_recvfrom(this_ptr->listening_socket,
-                                                   received_data,
-                                                   sizeof(received_data),
-                                                   0,
-                                                   &this_ptr->client_addr,
-                                                   &client_len);
+        const int32_t result = FreeRTOS_recvfrom(this_ptr->listening_socket,
+                                                 cmd_req.data,
+                                                 sizeof(cmd_req.data),
+                                                 0,
+                                                 &this_ptr->client_addr,
+                                                 &client_len);
 
-        if (bytes_received > 0)
+        if (result > 0)
         {
-            /* Echo received data */
-            FreeRTOS_sendto(this_ptr->listening_socket,
-                            received_data,
-                            bytes_received,
-                            0,
-                            &this_ptr->client_addr,
-                            client_len);
-
-            /* TODO: Send event with received data to server object? */
+            cmd_req.data_size = result;
+            cmd_req.data[cmd_req.data_size] = 0;
+            controller::event e { cmd_req };
+            controller::instance->send(e);
+        }
+        else
+        {
+            printf("Server error: 'recvfrom' failed\n");
         }
     }
 }
