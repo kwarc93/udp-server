@@ -56,5 +56,13 @@ void system::init(void)
     /* Set System Tick interrupt */
     SysTick_Config(system::system_clock / system::systick_freq);
 #endif
+
+#ifdef HAL_SYSTEM_CPU_CACHE_ENABLED
+    /* Enable I & D Caches */
+    SCB_InvalidateICache();
+    SCB_EnableICache();
+    SCB_InvalidateDCache();
+    SCB_EnableDCache();
+#endif
 }
 

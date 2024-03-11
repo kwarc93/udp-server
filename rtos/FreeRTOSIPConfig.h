@@ -241,6 +241,7 @@ because the packet will already have been passed into the stack).  If the
 Ethernet driver does all the necessary filtering in hardware then software
 filtering can be removed by using a value other than 1 or 0. */
 #define ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES 1
+#define ipconfigETHERNET_DRIVER_FILTERS_PACKETS 1
 
 /* The windows simulator cannot really simulate MAC interrupts, and needs to
 block occasionally to allow other tasks to run. */
@@ -346,18 +347,9 @@ messages. */
 
 #define ipconfigCHECK_IP_QUEUE_SPACE 1
 
-/* The iperf module declares a character buffer to store its send data. */
-#define ipconfigIPERF_RECV_BUFFER_SIZE   ( 2 * ipconfigTCP_MSS )
-
 #define ipconfigETHERNET_MINIMUM_PACKET_BYTES  ( 60 )
 
 #define ipconfigENDPOINT_DNS_ADDRESS_COUNT  ( 4 )
-
-#define configTCP_ECHO_CLIENT_PORT    ( 32002 )
-
-//#define ipconfigARP_STORES_REMOTE_ADDRESSES  ( 1 )
-
-#define ipconfigETHERNET_DRIVER_FILTERS_PACKETS ( 1 )
 
 #ifdef __cplusplus
 } /* extern "C" */

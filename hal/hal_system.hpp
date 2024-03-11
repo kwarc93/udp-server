@@ -15,6 +15,7 @@
 #include <drivers/stm32f7/core.hpp>
 
 #define HAL_SYSTEM_RTOS_ENABLED
+#define HAL_SYSTEM_CPU_CACHE_ENABLED
 
 namespace hal::system
 {
