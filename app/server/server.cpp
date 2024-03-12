@@ -10,6 +10,8 @@
 #include "app/config.hpp"
 #include "app/controller/controller.hpp"
 
+#include "drivers/stm32f7/rng.hpp"
+
 #include <cstdio>
 #include <cassert>
 
@@ -39,39 +41,25 @@ const char* pcApplicationHostnameHook(void)
 
 eDHCPCallbackAnswer_t xApplicationDHCPHook(eDHCPCallbackPhase_t eDHCPPhase, uint32_t ulIPAddress)
 {
-    eDHCPCallbackAnswer_t eReturn;
-    switch (eDHCPPhase)
+    if (eDHCPPhase == eDHCPPhasePreRequest)
     {
-        case eDHCPPhasePreDiscover:
-            eReturn = eDHCPContinue;
-            break;
-
-        case eDHCPPhasePreRequest:
-            char addr[16];
-            FreeRTOS_inet_ntoa (ulIPAddress, addr);
-            printf ("IP address from DHCP: %s\n", addr);
-            eReturn = eDHCPContinue;
-            break;
-
-        default:
-            eReturn = eDHCPContinue;
-            break;
+        char addr[16];
+        FreeRTOS_inet_ntoa(ulIPAddress, addr);
+        printf ("IP address from DHCP: %s\n", addr);
     }
 
-    return eReturn;
+    return eDHCPContinue;
 }
 
 BaseType_t xApplicationGetRandomNumber(uint32_t *pulNumber)
 {
-    static uint32_t rand = 2345;
-    *pulNumber = rand++;
-    return 1;
+    *pulNumber = drivers::rng::get();
+    return pdTRUE;
 }
 
 uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t usSourcePort, uint32_t ulDestinationAddress, uint16_t usDestinationPort)
 {
-    static uint32_t num = 65982591;
-    return num++;
+    return  drivers::rng::get();
 }
 
 //-----------------------------------------------------------------------------
@@ -170,6 +158,7 @@ void server::receive_thread_loop(void *arg)
 server::server() : active_object("server", osPriorityNormal, 2048),
 receive_thread {nullptr}, listening_socket {nullptr}, client_addr {0}, bind_addr {0}
 {
+    drivers::rng::enable(true);
     FreeRTOS_IPInit(config::ip_addr, config::net_mask, config::gateway_addr, config::dns_addr, config::mac_addr);
 }
 
