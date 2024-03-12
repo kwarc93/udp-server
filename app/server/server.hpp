@@ -27,6 +27,11 @@ struct network_down
 
 };
 
+struct ip_addr_assigned
+{
+    uint32_t address;
+};
+
 struct command_response
 {
     char data[64];
@@ -37,6 +42,7 @@ using incoming = std::variant
 <
     network_up,
     network_down,
+    ip_addr_assigned,
     command_response
 >;
 
@@ -54,6 +60,7 @@ private:
     /* Event handlers */
     void event_handler(const server_events::network_up &e);
     void event_handler(const server_events::network_down &e);
+    void event_handler(const server_events::ip_addr_assigned &e);
     void event_handler(const server_events::command_response &e);
 
     static void receive_thread_loop(void *arg);

@@ -10,7 +10,7 @@
 #include "app/config.hpp"
 #include "app/controller/controller.hpp"
 
-#include "drivers/stm32f7/rng.hpp"
+#include "hal/hal_random.hpp"
 
 #include <cstdio>
 #include <cassert>
@@ -43,9 +43,8 @@ eDHCPCallbackAnswer_t xApplicationDHCPHook(eDHCPCallbackPhase_t eDHCPPhase, uint
 {
     if (eDHCPPhase == eDHCPPhasePreRequest)
     {
-        char addr[16];
-        FreeRTOS_inet_ntoa(ulIPAddress, addr);
-        printf ("IP address from DHCP: %s\n", addr);
+        static server::event e { events::ip_addr_assigned { ulIPAddress }, server::event::flags::immutable };
+        server::instance->send(e);
     }
 
     return eDHCPContinue;
@@ -53,13 +52,13 @@ eDHCPCallbackAnswer_t xApplicationDHCPHook(eDHCPCallbackPhase_t eDHCPPhase, uint
 
 BaseType_t xApplicationGetRandomNumber(uint32_t *pulNumber)
 {
-    *pulNumber = drivers::rng::get();
+    *pulNumber = hal::random::get();
     return pdTRUE;
 }
 
 uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t usSourcePort, uint32_t ulDestinationAddress, uint16_t usDestinationPort)
 {
-    return  drivers::rng::get();
+    return  hal::random::get();
 }
 
 //-----------------------------------------------------------------------------
@@ -108,6 +107,13 @@ void server::event_handler(const events::network_down &e)
     this->receive_thread = nullptr;
 }
 
+void server::event_handler(const events::ip_addr_assigned &e)
+{
+    char buf[16] {};
+    FreeRTOS_inet_ntoa(e.address, buf);
+    printf("IP address: %s\n", buf);
+}
+
 void server::event_handler(const events::command_response &e)
 {
     const int32_t result = FreeRTOS_sendto(this->listening_socket,
@@ -142,8 +148,7 @@ void server::receive_thread_loop(void *arg)
         {
             cmd_req.data_size = result;
             cmd_req.data[cmd_req.data_size] = 0;
-            controller::event e { cmd_req };
-            controller::instance->send(e);
+            controller::instance->send({ cmd_req });
         }
         else
         {
@@ -158,8 +163,12 @@ void server::receive_thread_loop(void *arg)
 server::server() : active_object("server", osPriorityNormal, 2048),
 receive_thread {nullptr}, listening_socket {nullptr}, client_addr {0}, bind_addr {0}
 {
-    drivers::rng::enable(true);
+    hal::random::enable(true);
     FreeRTOS_IPInit(config::ip_addr, config::net_mask, config::gateway_addr, config::dns_addr, config::mac_addr);
+
+#if (ipconfigUSE_DHCP == 0)
+    this->send({ events::ip_addr_assigned { FreeRTOS_GetIPAddress() } });
+#endif
 }
 
 server::~server()
