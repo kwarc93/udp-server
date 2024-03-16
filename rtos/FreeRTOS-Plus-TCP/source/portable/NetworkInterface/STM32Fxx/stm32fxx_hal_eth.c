@@ -254,7 +254,7 @@
             tmpreg &= ETH_MACMIIAR_CR_MASK;
 
             /* Get hclk frequency value (e.g. 168,000,000) */
-            hclk = 200000000UL;
+            hclk = SystemCoreClock;
             #if !defined( STM32F2xx )
                 /* Set CR bits depending on hclk value */
                 if( ( hclk >= 20000000uL ) && ( hclk < 35000000uL ) )
@@ -327,6 +327,15 @@
 
             /* Config MAC and DMA */
             ETH_MACDMAConfig( heth, err );
+
+            /*
+             * Disable the interrupts that are related to the MMC counters.
+             * These interrupts are enabled by default. The interrupt can
+             * only be acknowledged by reading the corresponding counter.
+             */
+            heth->Instance->MACIMR = ETH_MACIMR_TSTIM | ETH_MACIMR_PMTIM;
+            heth->Instance->MMCRIMR = ETH_MMCRIMR_RGUFM | ETH_MMCRIMR_RFAEM | ETH_MMCRIMR_RFCEM;
+            heth->Instance->MMCTIMR = ETH_MMCTIMR_TGFM | ETH_MMCTIMR_TGFMSCM | ETH_MMCTIMR_TGFSCM;
 
             /* Set ETH HAL State to Ready */
             heth->State = HAL_ETH_STATE_READY;
@@ -506,7 +515,6 @@
                                                    uint32_t * RegValue )
         {
             uint32_t tmpreg = 0uL;
-//            uint32_t tickstart = 0uL;
             HAL_StatusTypeDef xResult;
 
             /* Check parameters */
@@ -539,9 +547,6 @@
                 /* Write the result value into the MII Address register */
                 heth->Instance->MACMIIAR = tmpreg;
 
-                /* Get tick */
-//                tickstart = HAL_GetTick();
-
                 /* Check for the Busy flag */
                 while( 1 )
                 {
@@ -554,13 +559,6 @@
                         xResult = HAL_OK;
                         break;
                     }
-
-                    /* Check for the Timeout */
-//                    if( ( HAL_GetTick() - tickstart ) > PHY_READ_TO )
-//                    {
-//                        xResult = HAL_TIMEOUT;
-//                        break;
-//                    }
                 }
 
                 /* Set ETH HAL State to READY */
@@ -590,7 +588,6 @@
                                                     uint32_t RegValue )
         {
             uint32_t tmpreg = 0;
-//            uint32_t tickstart = 0;
             HAL_StatusTypeDef xResult;
 
             /* Check parameters */
@@ -626,9 +623,6 @@
                 /* Write the result value into the MII Address register */
                 heth->Instance->MACMIIAR = tmpreg;
 
-                /* Get tick */
-//                tickstart = HAL_GetTick();
-
                 /* Check for the Busy flag */
                 while( 1 )
                 {
@@ -639,13 +633,6 @@
                         xResult = HAL_OK;
                         break;
                     }
-
-                    /* Check for the Timeout */
-//                    if( ( HAL_GetTick() - tickstart ) > PHY_WRITE_TO )
-//                    {
-//                        xResult = HAL_TIMEOUT;
-//                        break;
-//                    }
                 }
 
                 /* Set ETH HAL State to READY */

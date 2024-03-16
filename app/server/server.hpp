@@ -32,6 +32,11 @@ struct ip_addr_assigned
     uint32_t address;
 };
 
+struct udp_data_received
+{
+
+};
+
 struct command_response
 {
     char data[64];
@@ -43,6 +48,7 @@ using incoming = std::variant
     network_up,
     network_down,
     ip_addr_assigned,
+    udp_data_received,
     command_response
 >;
 
@@ -61,11 +67,9 @@ private:
     void event_handler(const server_events::network_up &e);
     void event_handler(const server_events::network_down &e);
     void event_handler(const server_events::ip_addr_assigned &e);
+    void event_handler(const server_events::udp_data_received &e);
     void event_handler(const server_events::command_response &e);
 
-    static void receive_thread_loop(void *arg);
-
-    osThreadId_t receive_thread;
     Socket_t listening_socket;
     struct freertos_sockaddr client_addr, bind_addr;
 };

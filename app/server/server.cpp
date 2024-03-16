@@ -61,6 +61,18 @@ uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t u
     return  hal::random::get();
 }
 
+static BaseType_t socket_udp_receive_callback(Socket_t socket, void * data, size_t length, const struct freertos_sockaddr * from, const struct freertos_sockaddr * dest)
+{
+    static const server::event e { events::udp_data_received { }, server::event::flags::immutable };
+    server::instance->send(e);
+    return 0;
+}
+
+static void socket_udp_sent_callback(Socket_t socket, size_t length)
+{
+
+}
+
 //-----------------------------------------------------------------------------
 /* private */
 
@@ -78,22 +90,18 @@ void server::event_handler(const events::network_up &e)
     this->listening_socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
     assert(this->listening_socket != FREERTOS_INVALID_SOCKET);
 
+    /* Set UDP callbacks */
+    F_TCP_UDP_Handler_t callbacks { nullptr, nullptr, nullptr, socket_udp_receive_callback, socket_udp_sent_callback };
+    FreeRTOS_setsockopt(this->listening_socket, 0, FREERTOS_SO_UDP_RECV_HANDLER, &callbacks, sizeof(callbacks));
+    FreeRTOS_setsockopt(this->listening_socket, 0, FREERTOS_SO_UDP_SENT_HANDLER, &callbacks, sizeof(callbacks));
+
     /* Set the socket send timeout */
     const uint32_t socket_send_timeout = 1000;
     FreeRTOS_setsockopt(this->listening_socket, 0, FREERTOS_SO_SNDTIMEO, &socket_send_timeout, sizeof(socket_send_timeout));
 
     /* Bind to port 7 */
-    bind_addr.sin_port = FreeRTOS_htons(7);
+    this->bind_addr.sin_port = FreeRTOS_htons(7);
     const bool err = FreeRTOS_bind(this->listening_socket, &this->bind_addr, sizeof(this->bind_addr)) != 0;
-
-    /* Create receiving thread */
-    osThreadAttr_t receive_thread_attr {0};
-    receive_thread_attr.name = "server_rcv";
-    receive_thread_attr.priority = osPriorityNormal;
-    receive_thread_attr.stack_size = 2048;
-
-    this->receive_thread = osThreadNew(this->receive_thread_loop, this, &receive_thread_attr);
-    assert(this->receive_thread != nullptr);
 
     printf("UDP server %s\n", err ? "start error" : "started");
 }
@@ -101,10 +109,6 @@ void server::event_handler(const events::network_up &e)
 void server::event_handler(const events::network_down &e)
 {
     printf("Disconnected from network\n");
-
-    osStatus_t status = osThreadTerminate(this->receive_thread);
-    assert(status == osOK);
-    this->receive_thread = nullptr;
 }
 
 void server::event_handler(const events::ip_addr_assigned &e)
@@ -112,6 +116,30 @@ void server::event_handler(const events::ip_addr_assigned &e)
     char buf[16] {};
     FreeRTOS_inet_ntoa(e.address, buf);
     printf("IP address: %s\n", buf);
+}
+
+void server::event_handler(const events::udp_data_received &e)
+{
+    uint32_t client_len = sizeof(this->client_addr);
+    controller_events::command_request cmd_req;
+
+    const int32_t result = FreeRTOS_recvfrom(this->listening_socket,
+                                             cmd_req.data,
+                                             sizeof(cmd_req.data),
+                                             FREERTOS_MSG_DONTWAIT,
+                                             &this->client_addr,
+                                             &client_len);
+
+    if (result > 0)
+    {
+        cmd_req.data_size = result;
+        cmd_req.data[cmd_req.data_size] = 0;
+        controller::instance->send({ cmd_req });
+    }
+    else
+    {
+        printf("Server error: 'recvfrom' failed\n");
+    }
 }
 
 void server::event_handler(const events::command_response &e)
@@ -127,41 +155,11 @@ void server::event_handler(const events::command_response &e)
         printf("Server error: 'sendto' failed\n");
 }
 
-void server::receive_thread_loop(void *arg)
-{
-    auto *this_ptr = static_cast<server*>(arg);
-
-    uint32_t client_len = sizeof(this_ptr->client_addr);
-
-    controller_events::command_request cmd_req;
-
-    while (true)
-    {
-        const int32_t result = FreeRTOS_recvfrom(this_ptr->listening_socket,
-                                                 cmd_req.data,
-                                                 sizeof(cmd_req.data),
-                                                 0,
-                                                 &this_ptr->client_addr,
-                                                 &client_len);
-
-        if (result > 0)
-        {
-            cmd_req.data_size = result;
-            cmd_req.data[cmd_req.data_size] = 0;
-            controller::instance->send({ cmd_req });
-        }
-        else
-        {
-            printf("Server error: 'recvfrom' failed\n");
-        }
-    }
-}
-
 //-----------------------------------------------------------------------------
 /* public */
 
 server::server() : active_object("server", osPriorityNormal, 2048),
-receive_thread {nullptr}, listening_socket {nullptr}, client_addr {0}, bind_addr {0}
+listening_socket {nullptr}, client_addr {0}, bind_addr {0}
 {
     hal::random::enable(true);
     FreeRTOS_IPInit(config::ip_addr, config::net_mask, config::gateway_addr, config::dns_addr, config::mac_addr);

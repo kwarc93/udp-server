@@ -84,6 +84,8 @@ http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_UDP/API/vApplicationIPNetwor
 */
 #define ipconfigUSE_NETWORK_EVENT_HOOK 1
 
+#define ipconfigUSE_CALLBACKS 1
+
 /* If ipconfigUSE_DHCP is 1 then FreeRTOS+TCP will attempt to retrieve an IP
 address, netmask, DNS server address and gateway address from a DHCP server.  If
 ipconfigUSE_DHCP is 0 then FreeRTOS+TCP will use a static IP address.  The

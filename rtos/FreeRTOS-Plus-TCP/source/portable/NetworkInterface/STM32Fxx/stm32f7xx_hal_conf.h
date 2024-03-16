@@ -168,6 +168,7 @@
 /* PHY Configuration delay */
 #define PHY_CONFIG_DELAY                ((uint32_t)0x00000FFFU)
 
+/* PHY Register R/W delay */
 #define PHY_READ_TO                     ((uint32_t)0x0000FFFFU)
 #define PHY_WRITE_TO                    ((uint32_t)0x0000FFFFU)
 
