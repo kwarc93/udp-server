@@ -20,31 +20,7 @@ namespace middlewares
 template <typename active>
 class active_object
 {
-    struct base_event
-    {
-        base_event(bool dynamic) : dynamic {dynamic} {}
-        virtual ~base_event() {}
-        virtual void dispatch(active *obj) = 0;
-        const bool dynamic;
-    };
-
 public:
-    template <typename event>
-    struct dynamic_event final : public base_event
-    {
-        dynamic_event(event &&e) : base_event(true), evt(std::move(e)) { }
-        void dispatch(active *obj) { obj->event_handler(this->evt); }
-        event evt;
-    };
-
-    template <typename event>
-    struct static_event final : public base_event
-    {
-        static_event(event &&e) : base_event(false), evt(std::move(e)) { }
-        void dispatch(active *obj) { obj->event_handler(this->evt); }
-        event evt;
-    };
-
     active_object(const std::string_view &name, osPriority_t priority, size_t stack_size, uint32_t queue_size = 32)
     {
         /* It is assumed that each active object is unique */
@@ -81,29 +57,42 @@ public:
     }
 
     template <typename event>
-    void send(static_event<event> &evt, uint32_t timeout = osWaitForever)
-    {
-        auto *msg = &evt;
-        assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
-    }
-
-    template <typename event>
-    void send(dynamic_event<event> evt, uint32_t timeout = osWaitForever)
-    {
-        auto *msg = new(std::nothrow) dynamic_event<event>(std::move(evt));
-        assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
-    }
-
-    template <typename event>
     void send(event evt, uint32_t timeout = osWaitForever)
     {
-        auto *msg = new(std::nothrow) dynamic_event<event>(std::move(evt));
-        assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
+        auto *ptr = new(std::nothrow) event_message<event, true>(std::move(evt));
+        assert(osMessageQueuePut(this->queue, &ptr, 0, timeout) == osOK);
+    }
+
+    template <typename event>
+    void send_from_isr(event evt)
+    {
+        static auto message = event_message<event, false>(std::move(evt));
+
+        auto *ptr = &message;
+        assert(osMessageQueuePut(this->queue, &ptr, 0, 0) == osOK);
     }
 
     /* Used for global access (e.g. from interrupt) */
     static inline active_object *instance;
+
+protected:
+    struct base_event
+    {
+        base_event(bool dynamic) : dynamic {dynamic} {}
+        virtual ~base_event() {}
+        virtual void dispatch(active *obj) = 0;
+        const bool dynamic;
+    };
+
 private:
+    template <typename event, bool allocated>
+    struct event_message : public base_event
+    {
+        event_message(event &&e) : base_event(allocated), evt(std::move(e)) { }
+        void dispatch(active *obj) { obj->event_handler(this->evt); }
+        event evt;
+    };
+
     static void thread_loop(void *arg)
     {
         auto *this_ = static_cast<active_object*>(arg);

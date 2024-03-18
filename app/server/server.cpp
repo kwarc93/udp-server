@@ -21,15 +21,9 @@
 void vApplicationIPNetworkEventHook(eIPCallbackEvent_t eNetworkEvent)
 {
     if (eNetworkEvent == eNetworkUp)
-    {
-        static server::static_event e { server::network_up {} };
-        server::instance->send(e);
-    }
+        server::instance->send(server::network_up {});
     else if (eNetworkEvent == eNetworkDown)
-    {
-        static server::static_event e { server::network_down {} };
-        server::instance->send(e);
-    }
+        server::instance->send(server::network_down {});
 }
 
 const char* pcApplicationHostnameHook(void)
@@ -40,10 +34,7 @@ const char* pcApplicationHostnameHook(void)
 eDHCPCallbackAnswer_t xApplicationDHCPHook(eDHCPCallbackPhase_t eDHCPPhase, uint32_t ulIPAddress)
 {
     if (eDHCPPhase == eDHCPPhasePreRequest)
-    {
-        static server::static_event e { server::ip_addr_assigned { ulIPAddress } };
-        server::instance->send(e);
-    }
+        server::instance->send(server::ip_addr_assigned { ulIPAddress });
 
     return eDHCPContinue;
 }
@@ -61,8 +52,7 @@ uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t u
 
 static BaseType_t socket_udp_receive_callback(Socket_t socket, void * data, size_t length, const struct freertos_sockaddr * from, const struct freertos_sockaddr * dest)
 {
-    static server::static_event e { server::udp_data_received {} };
-    server::instance->send(e);
+    server::instance->send_from_isr(server::udp_data_received {});
     return 0;
 }
 
