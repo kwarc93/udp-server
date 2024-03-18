@@ -158,7 +158,7 @@ listening_socket {nullptr}, client_addr {0}, bind_addr {0}
     FreeRTOS_IPInit(config::ip_addr, config::net_mask, config::gateway_addr, config::dns_addr, config::mac_addr);
 
 #if (ipconfigUSE_DHCP == 0)
-    this->send({ events::ip_addr_assigned { FreeRTOS_GetIPAddress() } });
+    this->send(ip_addr_assigned { FreeRTOS_GetIPAddress() });
 #endif
 }
 
