@@ -10,6 +10,7 @@
 
 #include "cmsis_os2.h"
 
+#include <type_traits>
 #include <string>
 #include <cassert>
 
@@ -29,18 +30,18 @@ class active_object
 
 public:
     template <typename event>
-    struct dynamic_event : public base_event
+    struct dynamic_event final : public base_event
     {
         dynamic_event(event &&e) : base_event(true), evt(std::move(e)) { }
-        void dispatch(active *obj) { obj->event_handler(evt); }
+        void dispatch(active *obj) { obj->event_handler(this->evt); }
         event evt;
     };
 
     template <typename event>
-    struct static_event : public base_event
+    struct static_event final : public base_event
     {
         static_event(event &&e) : base_event(false), evt(std::move(e)) { }
-        void dispatch(active *obj) { obj->event_handler(evt); }
+        void dispatch(active *obj) { obj->event_handler(this->evt); }
         event evt;
     };
 
@@ -80,20 +81,16 @@ public:
     }
 
     template <typename event>
-    void send(const static_event<event> &evt, uint32_t timeout = osWaitForever)
+    void send(static_event<event> &evt, uint32_t timeout = osWaitForever)
     {
         auto *msg = &evt;
-
-        assert(msg != nullptr);
         assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
     }
 
     template <typename event>
-    void send(const dynamic_event<event> &evt, uint32_t timeout = osWaitForever)
+    void send(dynamic_event<event> evt, uint32_t timeout = osWaitForever)
     {
         auto *msg = new(std::nothrow) dynamic_event<event>(std::move(evt));
-
-        assert(msg != nullptr);
         assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
     }
 
@@ -101,8 +98,6 @@ public:
     void send(event evt, uint32_t timeout = osWaitForever)
     {
         auto *msg = new(std::nothrow) dynamic_event<event>(std::move(evt));
-
-        assert(msg != nullptr);
         assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
     }
 

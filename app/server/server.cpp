@@ -15,8 +15,6 @@
 #include <cstdio>
 #include <cassert>
 
-namespace events = server_events;
-
 //-----------------------------------------------------------------------------
 /* helpers */
 
@@ -24,12 +22,12 @@ void vApplicationIPNetworkEventHook(eIPCallbackEvent_t eNetworkEvent)
 {
     if (eNetworkEvent == eNetworkUp)
     {
-        static const server::static_event e { server::network_up {} };
+        static server::static_event e { server::network_up {} };
         server::instance->send(e);
     }
     else if (eNetworkEvent == eNetworkDown)
     {
-        static const server::static_event e { server::network_down {} };
+        static server::static_event e { server::network_down {} };
         server::instance->send(e);
     }
 }
@@ -63,7 +61,7 @@ uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t u
 
 static BaseType_t socket_udp_receive_callback(Socket_t socket, void * data, size_t length, const struct freertos_sockaddr * from, const struct freertos_sockaddr * dest)
 {
-    static const server::static_event e { server::udp_data_received {} };
+    static server::static_event e { server::udp_data_received {} };
     server::instance->send(e);
     return 0;
 }

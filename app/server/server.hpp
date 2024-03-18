@@ -12,11 +12,6 @@
 
 #include "FreeRTOS_IP.h"
 
-namespace server_events
-{
-
-}
-
 class server : public middlewares::active_object<server>
 {
     friend middlewares::active_object<server>;
