@@ -8,8 +8,6 @@
 #ifndef CONTROLLER_CONTROLLER_HPP_
 #define CONTROLLER_CONTROLLER_HPP_
 
-#include <variant>
-
 #include <hal/hal_led.hpp>
 #include <hal/hal_button.hpp>
 
@@ -29,23 +27,16 @@ struct button_state_changed
     bool state;
 };
 
-using incoming = std::variant
-<
-    command_request,
-    button_state_changed
->;
-
 }
 
-class controller : public middlewares::active_object<controller_events::incoming>
+class controller : public middlewares::active_object<controller>
 {
+    friend middlewares::active_object<controller>;
 public:
     controller();
     ~controller();
 
 private:
-    void dispatch(const event &e) override;
-
     /* Event handlers */
     void event_handler(const controller_events::command_request &e);
     void event_handler(const controller_events::button_state_changed &e);

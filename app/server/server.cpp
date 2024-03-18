@@ -24,12 +24,12 @@ void vApplicationIPNetworkEventHook(eIPCallbackEvent_t eNetworkEvent)
 {
     if (eNetworkEvent == eNetworkUp)
     {
-        static const server::event e { events::network_up {}, server::event::flags::immutable };
+        static const server::static_event e { events::network_up {} };
         server::instance->send(e);
     }
     else if (eNetworkEvent == eNetworkDown)
     {
-        static const server::event e { events::network_down {}, server::event::flags::immutable };
+        static const server::static_event e { events::network_down {} };
         server::instance->send(e);
     }
 }
@@ -43,7 +43,7 @@ eDHCPCallbackAnswer_t xApplicationDHCPHook(eDHCPCallbackPhase_t eDHCPPhase, uint
 {
     if (eDHCPPhase == eDHCPPhasePreRequest)
     {
-        static server::event e { events::ip_addr_assigned { ulIPAddress }, server::event::flags::immutable };
+        static server::static_event e { events::ip_addr_assigned { ulIPAddress } };
         server::instance->send(e);
     }
 
@@ -63,7 +63,7 @@ uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t u
 
 static BaseType_t socket_udp_receive_callback(Socket_t socket, void * data, size_t length, const struct freertos_sockaddr * from, const struct freertos_sockaddr * dest)
 {
-    static const server::event e { events::udp_data_received { }, server::event::flags::immutable };
+    static const server::static_event e { events::udp_data_received {} };
     server::instance->send(e);
     return 0;
 }
@@ -75,11 +75,6 @@ static void socket_udp_sent_callback(Socket_t socket, size_t length)
 
 //-----------------------------------------------------------------------------
 /* private */
-
-void server::dispatch(const event& e)
-{
-    std::visit([this](auto &&e) { this->event_handler(e); }, e.data);
-}
 
 void server::event_handler(const events::network_up &e)
 {
@@ -134,7 +129,7 @@ void server::event_handler(const events::udp_data_received &e)
     {
         cmd_req.data_size = result;
         cmd_req.data[cmd_req.data_size] = 0;
-        controller::instance->send({ cmd_req });
+        controller::instance->send(cmd_req);
     }
     else
     {

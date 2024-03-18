@@ -8,8 +8,6 @@
 #ifndef SERVER_SERVER_HPP_
 #define SERVER_SERVER_HPP_
 
-#include <variant>
-
 #include <middlewares/active_object.hpp>
 
 #include "FreeRTOS_IP.h"
@@ -43,26 +41,16 @@ struct command_response
     size_t data_size;
 };
 
-using incoming = std::variant
-<
-    network_up,
-    network_down,
-    ip_addr_assigned,
-    udp_data_received,
-    command_response
->;
-
 }
 
-class server : public middlewares::active_object<server_events::incoming>
+class server : public middlewares::active_object<server>
 {
+    friend middlewares::active_object<server>;
 public:
     server();
     ~server();
 
 private:
-    void dispatch(const event &e) override;
-
     /* Event handlers */
     void event_handler(const server_events::network_up &e);
     void event_handler(const server_events::network_down &e);

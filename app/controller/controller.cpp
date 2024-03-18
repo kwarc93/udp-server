@@ -28,17 +28,13 @@ void button_timer_cb(void *arg)
 
     button->debounce();
 
-    controller::event e { events::button_state_changed {} };
-
     if (button->was_pressed())
     {
-        std::get<events::button_state_changed>(e.data).state = true;
-        controller::instance->send(e);
+        controller::instance->send(events::button_state_changed { true });
     }
     else if (button->was_released())
     {
-        std::get<events::button_state_changed>(e.data).state = false;
-        controller::instance->send(e);
+        controller::instance->send(events::button_state_changed { false });
     }
 }
 
@@ -46,11 +42,6 @@ void button_timer_cb(void *arg)
 
 //-----------------------------------------------------------------------------
 /* private */
-
-void controller::dispatch(const event& e)
-{
-    std::visit([this](auto &&e) { this->event_handler(e); }, e.data);
-}
 
 void controller::event_handler(const events::command_request &e)
 {
@@ -93,7 +84,7 @@ void controller::event_handler(const events::command_request &e)
     }
 
     if (cmd_rsp.data_size > 0)
-        server::instance->send(server::event { cmd_rsp });
+        server::instance->send(cmd_rsp);
 }
 
 void controller::event_handler(const events::button_state_changed &e)

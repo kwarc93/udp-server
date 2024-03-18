@@ -16,16 +16,32 @@
 namespace middlewares
 {
 
-template<typename T>
+template <typename active>
 class active_object
 {
-public:
-    struct event
+    struct base_event
     {
-        T data;
-        uint32_t flags;
-        enum flags { immutable = 1 << 0 };
-        event(const T &data, uint32_t flags = 0) : data {data}, flags {flags} {}
+        base_event(bool dynamic) : dynamic {dynamic} {}
+        virtual ~base_event() {}
+        virtual void dispatch(active *obj) = 0;
+        const bool dynamic;
+    };
+
+public:
+    template <typename event>
+    struct dynamic_event : public base_event
+    {
+        dynamic_event(event &&e) : base_event(true), evt(std::move(e)) { }
+        void dispatch(active *obj) { obj->event_handler(evt); }
+        event evt;
+    };
+
+    template <typename event>
+    struct static_event : public base_event
+    {
+        static_event(event &&e) : base_event(false), evt(std::move(e)) { }
+        void dispatch(active *obj) { obj->event_handler(evt); }
+        event evt;
     };
 
     active_object(const std::string_view &name, osPriority_t priority, size_t stack_size, uint32_t queue_size = 32)
@@ -37,7 +53,7 @@ public:
         /* Create queue of events */
         this->queue_attr.name = name.data();
 
-        this->queue = osMessageQueueNew(queue_size, sizeof(event*), &this->queue_attr);
+        this->queue = osMessageQueueNew(queue_size, sizeof(base_event*), &this->queue_attr);
         assert(this->queue != nullptr);
 
         /* Create worker thread */
@@ -63,47 +79,58 @@ public:
         this->instance = nullptr;
     }
 
-    void send(const event &e, uint32_t timeout = osWaitForever)
+    template <typename event>
+    void send(const static_event<event> &evt, uint32_t timeout = osWaitForever)
     {
-        const event *evt = nullptr;
+        auto *msg = &evt;
 
-        if (e.flags & event::flags::immutable)
-            evt = &e;
-        else
-            evt = new event(e);
+        assert(msg != nullptr);
+        assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
+    }
 
-        assert(evt != nullptr);
-        assert(osMessageQueuePut(this->queue, &evt, 0, timeout) == osOK);
+    template <typename event>
+    void send(const dynamic_event<event> &evt, uint32_t timeout = osWaitForever)
+    {
+        auto *msg = new(std::nothrow) dynamic_event<event>(std::move(evt));
+
+        assert(msg != nullptr);
+        assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
+    }
+
+    template <typename event>
+    void send(event evt, uint32_t timeout = osWaitForever)
+    {
+        auto *msg = new(std::nothrow) dynamic_event<event>(std::move(evt));
+
+        assert(msg != nullptr);
+        assert(osMessageQueuePut(this->queue, &msg, 0, timeout) == osOK);
     }
 
     /* Used for global access (e.g. from interrupt) */
     static inline active_object *instance;
 private:
-    virtual void dispatch(const event &e) = 0;
-
     static void thread_loop(void *arg)
     {
-        active_object *this_ = static_cast<active_object*>(arg);
+        auto *this_ = static_cast<active_object*>(arg);
 
         while (true)
         {
-            event *evt = nullptr;
-            uint8_t evt_prio = 0;
+            base_event *msg = nullptr;
+            uint8_t msg_prio = 0;
 
-            if (osMessageQueueGet(this_->queue, &evt, &evt_prio, osWaitForever) == osOK)
+            if (osMessageQueueGet(this_->queue, &msg, &msg_prio, osWaitForever) == osOK)
             {
-                this_->dispatch(*evt);
-
-                if (!((*evt).flags & event::flags::immutable))
-                    delete evt;
+                msg->dispatch(static_cast<active*>(this_));
+                if (msg->dynamic)
+                    delete msg;
             }
         }
     }
 
     osMessageQueueId_t queue;
-    osMessageQueueAttr_t queue_attr = { 0 };
+    osMessageQueueAttr_t queue_attr { 0 };
     osThreadId_t thread;
-    osThreadAttr_t thread_attr = { 0 };
+    osThreadAttr_t thread_attr { 0 };
 };
 
 }
