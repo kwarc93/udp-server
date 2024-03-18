@@ -11,8 +11,6 @@
 #include <string>
 #include <cstdio>
 
-namespace events = controller_events;
-
 //-----------------------------------------------------------------------------
 /* helpers */
 
@@ -30,11 +28,11 @@ void button_timer_cb(void *arg)
 
     if (button->was_pressed())
     {
-        controller::instance->send(events::button_state_changed { true });
+        controller::instance->send(controller::button_state_changed { true });
     }
     else if (button->was_released())
     {
-        controller::instance->send(events::button_state_changed { false });
+        controller::instance->send(controller::button_state_changed { false });
     }
 }
 
@@ -43,7 +41,7 @@ void button_timer_cb(void *arg)
 //-----------------------------------------------------------------------------
 /* private */
 
-void controller::event_handler(const events::command_request &e)
+void controller::event_handler(const command_request &e)
 {
     const std::string cmd_req = e.data;
 
@@ -58,7 +56,7 @@ void controller::event_handler(const events::command_request &e)
 
     const std::string arg = cmd_req.substr(delim_pos + 1, end_pos - delim_pos - 1);
 
-    server_events::command_response cmd_rsp {};
+    server::command_response cmd_rsp {};
 
     if (cmd == "led")
     {
@@ -87,7 +85,7 @@ void controller::event_handler(const events::command_request &e)
         server::instance->send(cmd_rsp);
 }
 
-void controller::event_handler(const events::button_state_changed &e)
+void controller::event_handler(const button_state_changed &e)
 {
     printf("Button %s\n", e.state ? "pressed" : "released");
 }

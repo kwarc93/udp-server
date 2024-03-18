@@ -24,12 +24,12 @@ void vApplicationIPNetworkEventHook(eIPCallbackEvent_t eNetworkEvent)
 {
     if (eNetworkEvent == eNetworkUp)
     {
-        static const server::static_event e { events::network_up {} };
+        static const server::static_event e { server::network_up {} };
         server::instance->send(e);
     }
     else if (eNetworkEvent == eNetworkDown)
     {
-        static const server::static_event e { events::network_down {} };
+        static const server::static_event e { server::network_down {} };
         server::instance->send(e);
     }
 }
@@ -43,7 +43,7 @@ eDHCPCallbackAnswer_t xApplicationDHCPHook(eDHCPCallbackPhase_t eDHCPPhase, uint
 {
     if (eDHCPPhase == eDHCPPhasePreRequest)
     {
-        static server::static_event e { events::ip_addr_assigned { ulIPAddress } };
+        static server::static_event e { server::ip_addr_assigned { ulIPAddress } };
         server::instance->send(e);
     }
 
@@ -63,7 +63,7 @@ uint32_t ulApplicationGetNextSequenceNumber(uint32_t ulSourceAddress, uint16_t u
 
 static BaseType_t socket_udp_receive_callback(Socket_t socket, void * data, size_t length, const struct freertos_sockaddr * from, const struct freertos_sockaddr * dest)
 {
-    static const server::static_event e { events::udp_data_received {} };
+    static const server::static_event e { server::udp_data_received {} };
     server::instance->send(e);
     return 0;
 }
@@ -76,7 +76,7 @@ static void socket_udp_sent_callback(Socket_t socket, size_t length)
 //-----------------------------------------------------------------------------
 /* private */
 
-void server::event_handler(const events::network_up &e)
+void server::event_handler(const network_up &e)
 {
     printf("Connected to network\n");
     printf("Starting UDP server...\n");
@@ -101,22 +101,22 @@ void server::event_handler(const events::network_up &e)
     printf("UDP server %s\n", err ? "start error" : "started");
 }
 
-void server::event_handler(const events::network_down &e)
+void server::event_handler(const network_down &e)
 {
     printf("Disconnected from network\n");
 }
 
-void server::event_handler(const events::ip_addr_assigned &e)
+void server::event_handler(const ip_addr_assigned &e)
 {
     char buf[16] {};
     FreeRTOS_inet_ntoa(e.address, buf);
     printf("IP address: %s\n", buf);
 }
 
-void server::event_handler(const events::udp_data_received &e)
+void server::event_handler(const udp_data_received &e)
 {
     uint32_t client_len = sizeof(this->client_addr);
-    controller_events::command_request cmd_req;
+    controller::command_request cmd_req;
 
     const int32_t result = FreeRTOS_recvfrom(this->listening_socket,
                                              cmd_req.data,
@@ -137,7 +137,7 @@ void server::event_handler(const events::udp_data_received &e)
     }
 }
 
-void server::event_handler(const events::command_response &e)
+void server::event_handler(const command_response &e)
 {
     const int32_t result = FreeRTOS_sendto(this->listening_socket,
                                            e.data,

@@ -13,33 +13,20 @@
 
 #include <middlewares/active_object.hpp>
 
-namespace controller_events
-{
-
-struct command_request
-{
-    char data[64];
-    size_t data_size;
-};
-
-struct button_state_changed
-{
-    bool state;
-};
-
-}
-
 class controller : public middlewares::active_object<controller>
 {
     friend middlewares::active_object<controller>;
 public:
+    struct command_request { char data[64]; size_t data_size; };
+    struct button_state_changed { bool state; };
+
     controller();
     ~controller();
 
 private:
     /* Event handlers */
-    void event_handler(const controller_events::command_request &e);
-    void event_handler(const controller_events::button_state_changed &e);
+    void event_handler(const command_request &e);
+    void event_handler(const button_state_changed &e);
 
     hal::leds::debug led;
     hal::buttons::blue_btn button;
