@@ -67,7 +67,8 @@ public:
     void send_from_isr(event evt)
     {
         /* 'static' here implies that event MUST have single source */
-        static auto message = event_message<event, false>{std::move(evt)};
+        static event_message<event, false> message {event{}};
+        message.evt = std::move(evt);
 
         auto *ptr = &message;
         assert(osMessageQueuePut(this->queue, &ptr, 0, 0) == osOK);

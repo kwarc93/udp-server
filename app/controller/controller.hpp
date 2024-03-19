@@ -17,6 +17,7 @@ class controller : public middlewares::active_object<controller>
 {
     friend middlewares::active_object<controller>;
 public:
+    /* Events */
     struct command_request { char data[64]; size_t data_size; };
     struct button_state_changed { bool state; };
 

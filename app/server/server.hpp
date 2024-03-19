@@ -21,11 +21,7 @@ public:
     struct network_down {};
     struct ip_addr_assigned { uint32_t address; };
     struct udp_data_received {};
-    struct command_response
-    {
-        char data[64];
-        size_t data_size;
-    };
+    struct command_response { char data[64]; size_t data_size; };
 
     server();
     ~server();
