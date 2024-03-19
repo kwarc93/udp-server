@@ -59,14 +59,15 @@ public:
     template <typename event>
     void send(event evt, uint32_t timeout = osWaitForever)
     {
-        auto *ptr = new(std::nothrow) event_message<event, true>(std::move(evt));
+        auto *ptr = new(std::nothrow) event_message<event, true>{std::move(evt)};
         assert(osMessageQueuePut(this->queue, &ptr, 0, timeout) == osOK);
     }
 
     template <typename event>
     void send_from_isr(event evt)
     {
-        static auto message = event_message<event, false>(std::move(evt));
+        /* 'static' here implies that event MUST have single source */
+        static auto message = event_message<event, false>{std::move(evt)};
 
         auto *ptr = &message;
         assert(osMessageQueuePut(this->queue, &ptr, 0, 0) == osOK);
@@ -78,7 +79,7 @@ public:
 protected:
     struct base_event
     {
-        base_event(bool dynamic) : dynamic {dynamic} {}
+        base_event(bool dynamic) : dynamic{dynamic} {}
         virtual ~base_event() {}
         virtual void dispatch(active *obj) = 0;
         const bool dynamic;
@@ -88,7 +89,7 @@ private:
     template <typename event, bool allocated>
     struct event_message : public base_event
     {
-        event_message(event &&e) : base_event(allocated), evt(std::move(e)) { }
+        event_message(event &&e) : base_event{allocated}, evt{std::move(e)} { }
         void dispatch(active *obj) { obj->event_handler(this->evt); }
         event evt;
     };
