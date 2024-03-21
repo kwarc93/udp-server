@@ -115,9 +115,19 @@ void server::event_handler(const udp_data_received &e)
 
     if (result > 0)
     {
+        /* Fill the request event */
         cmd_req.data_size = result;
         cmd_req.data[cmd_req.data_size] = 0;
-        controller::instance->send(cmd_req);
+        cmd_req.response =
+        [this](const char *data, size_t data_size)
+        {
+            command_response e;
+            e.data_size = data_size;
+            memcpy(e.data, data, data_size);
+            this->send(e);
+        };
+
+        this->ctrl->send(cmd_req);
     }
     else
     {
@@ -141,8 +151,8 @@ void server::event_handler(const command_response &e)
 //-----------------------------------------------------------------------------
 /* public */
 
-server::server() : active_object("server", osPriorityNormal, 2048),
-listening_socket {nullptr}, client_addr {0}, bind_addr {0}
+server::server(controller &c) : active_object("server", osPriorityNormal, 2048),
+ctrl {&c}, listening_socket {nullptr}, client_addr {0}, bind_addr {0}
 {
     hal::random::enable(true);
     FreeRTOS_IPInit(config::ip_addr, config::net_mask, config::gateway_addr, config::dns_addr, config::mac_addr);

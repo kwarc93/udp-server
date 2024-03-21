@@ -8,6 +8,8 @@
 #ifndef CONTROLLER_CONTROLLER_HPP_
 #define CONTROLLER_CONTROLLER_HPP_
 
+#include <functional>
+
 #include <hal/hal_led.hpp>
 #include <hal/hal_button.hpp>
 
@@ -18,7 +20,7 @@ class controller : public middlewares::active_object<controller>
     friend middlewares::active_object<controller>;
 public:
     /* Events */
-    struct command_request { char data[64]; size_t data_size; };
+    struct command_request { char data[64]; size_t data_size; std::function<void(const char *data, size_t data_size)>response; };
     struct button_state_changed { bool state; };
 
     controller();

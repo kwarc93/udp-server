@@ -56,7 +56,8 @@ void controller::event_handler(const command_request &e)
 
     const std::string arg = cmd_req.substr(delim_pos + 1, end_pos - delim_pos - 1);
 
-    server::command_response cmd_rsp {};
+    char cmd_rsp[64] = { 0 };
+    size_t rsp_size = 0;
 
     if (cmd == "led")
     {
@@ -65,12 +66,12 @@ void controller::event_handler(const command_request &e)
         else if (arg == "off")
             this->led.set(false);
         else if (arg == "get")
-            cmd_rsp.data_size = std::snprintf(cmd_rsp.data, sizeof(cmd_rsp.data), ">led is %s\n",(this->led.get() ? "on" : "off"));
+            rsp_size = std::snprintf(cmd_rsp, sizeof(cmd_rsp), ">led is %s\n", (this->led.get() ? "on" : "off"));
     }
     else if (cmd == "button")
     {
         if (arg == "get")
-            cmd_rsp.data_size = std::snprintf(cmd_rsp.data, sizeof(cmd_rsp.data), ">button is %s\n",(this->button.is_pressed() ? "pressed" : "released"));
+            rsp_size = std::snprintf(cmd_rsp, sizeof(cmd_rsp), ">button is %s\n", (this->button.is_pressed() ? "pressed" : "released"));
     }
     else if (cmd == "print")
     {
@@ -78,11 +79,11 @@ void controller::event_handler(const command_request &e)
     }
     else
     {
-        cmd_rsp.data_size = std::snprintf(cmd_rsp.data, sizeof(cmd_rsp.data), ">unsupported command\n");
+        rsp_size = std::snprintf(cmd_rsp, sizeof(cmd_rsp), ">unsupported command\n");
     }
 
-    if (cmd_rsp.data_size > 0)
-        server::instance->send(cmd_rsp);
+    if (rsp_size > 0)
+        e.response(cmd_rsp, rsp_size);
 }
 
 void controller::event_handler(const button_state_changed &e)

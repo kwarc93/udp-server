@@ -22,8 +22,8 @@
 void init_thread(void *arg)
 {
     /* Create active objects */
-    auto ctrl = std::make_unique<controller>();
-    auto srv = std::make_unique<server>();
+    auto ctrl = controller();
+    auto srv = server(ctrl);
 
     osThreadSuspend(osThreadGetId());
 }

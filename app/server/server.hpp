@@ -12,6 +12,8 @@
 
 #include "FreeRTOS_IP.h"
 
+class controller;
+
 class server : public middlewares::active_object<server>
 {
     friend middlewares::active_object<server>;
@@ -23,7 +25,7 @@ public:
     struct udp_data_received {};
     struct command_response { char data[64]; size_t data_size; };
 
-    server();
+    server(controller &c);
     ~server();
 
 private:
@@ -34,6 +36,7 @@ private:
     void event_handler(const udp_data_received &e);
     void event_handler(const command_response &e);
 
+    controller *ctrl;
     Socket_t listening_socket;
     struct freertos_sockaddr client_addr, bind_addr;
 };
